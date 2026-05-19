@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>禁忌的 Show｜序章開場</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Dela+Gothic+One&family=DotGothic16&family=Kaisei+Decol:wght@500;700&family=LXGW+WenKai+TC:wght@400;700&family=RocknRoll+One&family=Shippori+Mincho+B1:wght@500;600&family=Stick&family=Zen+Maru+Gothic&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a0a;
+    color: #fff;
+    font-family: "Noto Serif TC", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #stage {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  /* ── 每一幀共用 ── */
+  .frame {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    pointer-events: none;
+  }
+  .frame.visible  { opacity: 1; }
+  .frame.fade-out { opacity: 0; transition: opacity 0.6s ease; }
+
+  /* ═══════════════════════════════
+     字卡幀（全黑置中文字）
+  ═══════════════════════════════ */
+  .card-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 12vw;
+    background: #0a0a0a;
+  }
+  .card-frame::before {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    width: 1px; height: 0;
+    background: rgba(200,54,74,0.2);
+    transition: height 1.2s ease;
+  }
+  .card-frame.visible::before { height: 78vh; }
+  .card-frame.no-line::before { display: none; }
+
+  .card-main {
+    position: relative;
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 300;
+    letter-spacing: 0.24em;
+    line-height: 1.45;
+    color: #fff;
+  }
+  .card-main em { font-style: normal; color: #c8364a; }
+  .card-sub {
+    position: relative;
+    margin-top: 1.2rem;
+    font-size: clamp(0.75rem, 1.6vw, 1.2rem);
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.42);
+  }
+  .card-frame.warning .card-main {
+    font-size: clamp(0.9rem, 2vw, 1.5rem);
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.32em;
+  }
+  .card-frame.logo .card-main {
+    font-size: clamp(2.4rem, 6vw, 5.2rem);
+    font-weight: 200;
+    letter-spacing: 0.38em;
+  }
+
+  /* ═══════════════════════════════
+     角色幀（全螢幕 CG + 疊字）
+  ═══════════════════════════════ */
+  .char-frame {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* 全螢幕 CG 區（內含三連圖階段 + 最終 CG） */
+  .cg-bg {
+    position: absolute;
+    inset: 0;
+    background: #181818;
+    display: block;
+  }
+  /* 右半側稍深漸層，讓文字更易讀 */
+  .cg-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to right,  rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.55) 100%),
+      linear-gradient(to top,    rgba(0,0,0,0.75) 0%, transparent 55%);
+  }
+  .cg-placeholder {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: clamp(0.65rem, 1.1vw, 0.9rem);
+    color: rgba(255,255,255,0.14);
+    letter-spacing: 0.15em;
+    text-align: center;
+    line-height: 2;
+    z-index: 1;
+  }
+  .cg-placeholder strong {
+    display: block;
+    font-size: clamp(0.85rem, 1.5vw, 1.15rem);
+    color: rgba(255,255,255,0.22);
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.22em;
+  }
+
+  /* 三連圖 → 全幅 CG：兩層舞台 */
+  .cg-stage {
+    position: absolute;
+    inset: 0;
+  }
+  .cg-stage-triptych {
+    display: flex;
+    flex-direction: row;
+    gap: 3px;
+    z-index: 1;
+    opacity: 1;
+    transition: opacity 0.78s ease;
+    pointer-events: none;
+  }
+  .cg-stage-triptych.is-hidden {
+    opacity: 0;
+  }
+
+  .cg-panel {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+    background: #141414;
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 1.05s ease, transform 1.05s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .cg-panel.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .cg-panel-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+
+  .cg-panel-ph {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.6rem;
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: clamp(0.55rem, 1vw, 0.78rem);
+    color: rgba(255,255,255,0.17);
+    letter-spacing: 0.14em;
+    line-height: 1.85;
+  }
+  .cg-panel-ph strong {
+    display: block;
+    font-size: clamp(0.72rem, 1.2vw, 0.95rem);
+    color: rgba(255,255,255,0.24);
+    margin-bottom: 0.35rem;
+    letter-spacing: 0.2em;
+  }
+  .cg-panel-ph span {
+    display: block;
+    font-size: 0.88em;
+    color: rgba(255,255,255,0.14);
+  }
+
+  .cg-stage-full {
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.88s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .cg-stage-full.is-visible {
+    opacity: 1;
+  }
+  /* 三連圖後的最終 CG：快速顯現舞台，交給內層展開 + 白光消退 */
+  .cg-stage-full.cg-stage-final-reveal {
+    overflow: hidden;
+    transition: opacity 0.22s ease;
+  }
+  .cg-stage-full.cg-stage-final-reveal::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    background: #fff;
+    opacity: 1;
+    pointer-events: none;
+    transition: opacity 1.28s cubic-bezier(0.33, 1, 0.68, 1) 0.2s;
+  }
+  .cg-stage-full.cg-stage-final-reveal.is-visible::after {
+    opacity: 0;
+  }
+  .cg-full-inner {
+    position: absolute;
+    inset: 0;
+    clip-path: inset(50% 0 50% 0);
+    transition: clip-path 1.08s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  .cg-stage-full.cg-stage-final-reveal.is-visible .cg-full-inner {
+    clip-path: inset(0% 0 0% 0);
+  }
+  /* 未使用三連圖時：僅全幅佔位，一開始即顯示 */
+  .cg-stage-full.cg-stage-full-only {
+    z-index: 1;
+    opacity: 1;
+  }
+  .cg-stage-full.cg-stage-full-only .cg-full-inner {
+    clip-path: inset(0);
+    transition: none;
+  }
+
+  .cg-stage-full.is-visible .cg-placeholder {
+    position: relative;
+    z-index: 1;
+  }
+
+  .cg-full-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+
+  .cg-bg {
+    clip-path: inset(50% 0 50% 0);
+    transition: clip-path 0.95s cubic-bezier(0.76, 0, 0.24, 1);
+  }
+  .char-frame.visible .cg-bg {
+    clip-path: inset(0% 0 0% 0);
+  }
+
+  /* ── 疊層容器（在 CG 上方） ── */
+  .char-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+  }
+
+  /* ─────────────────────────────
+     名字層（最後出現）
+  ───────────────────────────── */
+  .name-layer {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+  .name-layer.show { opacity: 1; }
+
+  /* 左側：身份小標 + 縱向大名 */
+  .name-left {
+    position: absolute;
+    left: 4vw;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+  .name-tag {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: clamp(0.55rem, 0.9vw, 0.75rem);
+    letter-spacing: 0.4em;
+    color: #c8364a;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
+  /* 大字縱排（角色稱呼） */
+  .name-big {
+    font-size: clamp(3rem, 7vw, 6.5rem);
+    font-weight: 300;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    color: #fff;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    /* 仿參考圖有一條左邊框線 */
+    border-left: 3px solid #c8364a;
+    padding-left: 0.55rem;
+  }
+
+  /* 底部：橫排綽號 / 類型描述 */
+  .name-bottom {
+    position: absolute;
+    bottom: 5vh;
+    left: 4vw;
+    right: 4vw;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .name-bottom-label {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: clamp(0.55rem, 0.9vw, 0.75rem);
+    letter-spacing: 0.4em;
+    color: rgba(255,255,255,0.38);
+  }
+  .name-bottom-main {
+    font-size: clamp(1.4rem, 3.5vw, 3rem);
+    font-weight: 300;
+    letter-spacing: 0.22em;
+    color: #fff;
+    line-height: 1.15;
+  }
+  .name-bottom-sub {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: clamp(0.6rem, 1vw, 0.8rem);
+    letter-spacing: 0.28em;
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* ═══════════════════════════════
+     角色名字字形（依性格；掛在 .char-frame.nf-* ）
+  ═══════════════════════════════ */
+  .char-frame.nf-punk .name-big,
+  .char-frame.nf-punk .name-bottom-main {
+    font-family: "Dela Gothic One", "Noto Sans TC", sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+  }
+  .char-frame.nf-innocent .name-big,
+  .char-frame.nf-innocent .name-bottom-main {
+    font-family: "Zen Maru Gothic", "Noto Sans TC", sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+  }
+  .char-frame.nf-athletic .name-big,
+  .char-frame.nf-athletic .name-bottom-main {
+    font-family: "RocknRoll One", "Noto Sans TC", sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+  }
+  .char-frame.nf-sports .name-big,
+  .char-frame.nf-sports .name-bottom-main {
+    font-family: "Chakra Petch", "Noto Sans TC", sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+  }
+  .char-frame.nf-warm .name-big,
+  .char-frame.nf-warm .name-bottom-main {
+    font-family: "LXGW WenKai TC", "Noto Serif TC", serif;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+  }
+  .char-frame.nf-cool .name-big,
+  .char-frame.nf-cool .name-bottom-main {
+    font-family: "Shippori Mincho B1", "Noto Serif TC", serif;
+    font-weight: 600;
+    letter-spacing: 0.26em;
+  }
+  .char-frame.nf-lady .name-big,
+  .char-frame.nf-lady .name-bottom-main {
+    font-family: "Kaisei Decol", "Noto Serif TC", serif;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+  }
+  .char-frame.nf-mine .name-big,
+  .char-frame.nf-mine .name-bottom-main {
+    font-family: "DotGothic16", "MS Gothic", "Noto Sans TC", monospace;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+  }
+  .char-frame.nf-mc .name-big,
+  .char-frame.nf-mc .name-bottom-main {
+    font-family: "Stick", "Noto Sans TC", sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.24em;
+  }
+
+  /* ─────────────────────────────
+     Phase B：台詞層
+     底部橫條
+  ───────────────────────────── */
+  .line-layer {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-bottom: 7vh;
+  }
+  .line-layer.show { opacity: 1; }
+
+  .line-triptych-topic {
+    display: none !important;
+  }
+
+  /* 底部漸層加深（台詞層自己的） */
+  .line-layer::before {
+    content: "";
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 45%;
+    background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .line-inner {
+    position: relative;
+    padding: 0 5vw;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .line-speaker {
+    display: none !important;
+  }
+  .line-text {
+    font-size: clamp(1.15rem, 2.4vw, 2rem);
+    font-weight: 300;
+    line-height: 1.85;
+    letter-spacing: 0.1em;
+    color: rgba(255,255,255,0.88);
+  }
+  .line-text em {
+    font-style: normal;
+    color: rgba(255,255,255,0.38);
+    font-size: 0.88em;
+  }
+  /* 地雷：台詞前的「載入中」 */
+  .line-loading {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: clamp(0.65rem, 1.1vw, 0.88rem);
+    letter-spacing: 0.3em;
+    color: rgba(255,255,255,0.24);
+  }
+
+  /* ═══════════════════════════════
+     VIP 輸入面板
+  ═══════════════════════════════ */
+  #vip-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.82);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.7s ease;
+  }
+  #vip-panel.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .vip-box {
+    width: min(540px, 88vw);
+    border: 1px solid rgba(200,54,74,0.55);
+    background: rgba(12,12,12,0.96);
+    padding: clamp(2rem, 5vw, 3.5rem) clamp(2rem, 5vw, 3.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: 2.2rem;
+    position: relative;
+  }
+
+  /* 角落裝飾線 */
+  .vip-box::before,
+  .vip-box::after {
+    content: "";
+    position: absolute;
+    width: 18px; height: 18px;
+    border-color: #c8364a;
+    border-style: solid;
+  }
+  .vip-box::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+  .vip-box::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+  .vip-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .vip-header-label {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.45em;
+    color: #c8364a;
+  }
+  .vip-header-title {
+    font-size: clamp(1.1rem, 2.5vw, 1.7rem);
+    font-weight: 300;
+    letter-spacing: 0.22em;
+    color: #fff;
+  }
+  .vip-header-sub {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.18em;
+    color: rgba(255,255,255,0.28);
+    margin-top: 0.2rem;
+  }
+
+  /* 欄位 */
+  .vip-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+  .vip-field label {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.4em;
+    color: rgba(200,54,74,0.8);
+  }
+  .vip-field input,
+  .vip-field textarea {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    font-family: "Noto Serif TC", "Hiragino Mincho ProN", Georgia, serif;
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    font-weight: 300;
+    letter-spacing: 0.12em;
+    padding: 0.5rem 0;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.3s ease;
+    resize: none;
+  }
+  .vip-field input:focus,
+  .vip-field textarea:focus {
+    border-bottom-color: rgba(200,54,74,0.7);
+  }
+  .vip-field input::placeholder,
+  .vip-field textarea::placeholder {
+    color: rgba(255,255,255,0.18);
+    font-size: 0.88em;
+  }
+  .vip-field textarea { height: 4.5rem; line-height: 1.8; }
+
+  /* 確認按鈕 */
+  #vip-confirm {
+    align-self: flex-end;
+    background: transparent;
+    border: 1px solid rgba(200,54,74,0.6);
+    color: #fff;
+    font-family: "Noto Serif TC", Georgia, serif;
+    font-size: 0.85rem;
+    font-weight: 300;
+    letter-spacing: 0.38em;
+    padding: 0.75rem 2.2rem;
+    cursor: pointer;
+    transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  #vip-confirm:hover {
+    background: rgba(200,54,74,0.15);
+    border-color: #c8364a;
+  }
+  #vip-confirm.flash {
+    background: #c8364a;
+    color: #000;
+  }
+
+  /* ── 底部進度條 ── */
+  #progress {
+    position: fixed;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: rgba(200,54,74,0.75);
+    width: 0%;
+    transition: width 0.4s ease;
+    z-index: 200;
+  }
+  #seq-label {
+    position: fixed;
+    bottom: 1.4rem; right: 2rem;
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    color: rgba(255,255,255,0.12);
+    z-index: 200;
+  }
+
+  /* ── 噪點疊層 ── */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="progress"></div>
+<div id="seq-label"></div>
+
+<!-- VIP 輸入面板 -->
+<div id="vip-panel">
+  <div class="vip-box">
+    <div class="vip-header">
+      <div class="vip-header-label">節目組 · 特邀嘉賓確認</div>
+      <div class="vip-header-title">在你入場之前——</div>
+      <div class="vip-header-sub">以下資料僅供本節目使用，簽名即視同同意一切規則。</div>
+    </div>
+
+    <div class="vip-field">
+      <label>你的姓名</label>
+      <input id="vip-name" type="text" maxlength="12" placeholder="輸入名字……" autocomplete="off" />
+    </div>
+
+    <div class="vip-field">
+      <label>你想說的第一句話</label>
+      <textarea id="vip-line" maxlength="60" placeholder="開場白，說錯了不能重來……"></textarea>
+    </div>
+
+    <button id="vip-confirm">確認入場 ——</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// 序列定義
+// 角色幀可選：cgPanels: [左,中,右] → cgFinal 全幅 CG。（路徑可為 ""，顯示佔位至置入圖檔，見 cg/sunshine_girl/README.txt）
+// 若加 cgTriptychLines（長度 3），三連圖階段底部會依序顯示台詞（對應每格圖）；
+// cgTriptychTopics 可選，預設「性格 / 興趣 / 擇偶喜好」。全幅 CG 後再播原本的 line。
+// nameFontClass：角色名字 + 說話者標籤字形，對應 head 載入之 Google Fonts（nf-punk / nf-innocent …）。
+// ═══════════════════════════════════════════════════
+const SEQUENCE = [
+
+  /* ① 警示字卡 */
+  { type:"card", variant:"warning no-line",
+    main:"18+ · 虛構節目 · 所有感覺均屬真實。",
+    hold: 2600 },
+
+  /* ② 節目定位 */
+  { type:"card",
+    main:"打破禁忌的戀綜",
+    sub:"心動與規則，只能二選一？",
+    hold: 3000 },
+
+  /* ②b 一號女嘉賓入場（接三連圖） */
+  { type:"card",
+    main:"有請——<em>一號女嘉賓</em>。",
+    sub:"講話不甜、臉也不軟；先暈她的，自己看著辦。",
+    hold: 3000 },
+
+  /* ③ 搖滾少女 */
+  { type:"char",
+    tag:"女嘉賓 · 01",
+    name:"搖滾少女",           // ← 後面換本名
+    nameFontClass:"nf-punk",
+    nameSub:"龐克 · 叛逆 · 外冷內熱",
+    /* 三連圖：左→右 正面全身 → 俯視 → 側臉；cgFinal 為完整半身入場 CG */
+    cgPanels: [
+      "cg/rock_girl/panel_01_front.png",
+      "cg/rock_girl/panel_02_top.png",
+      "cg/rock_girl/panel_03_side.png"
+    ],
+    cgFinal: "cg/rock_girl/cg_full_enter.png",
+    cgPanelHints: ["走廊前行 · 全身", "俯視 · 吉他箱重心", "側臉 · 特寫"],
+    cgTriptychTopics: ["性格", "興趣", "擇偶喜好"],
+    cgTriptychLines: [
+      "我大概就長這樣，看起來不好惹，話也不多。<br>你要靠近可以，先講清楚你是認真還是玩玩；我沒空陪誰試水溫。",
+      "音樂跟吉他，只是背久了就變成習慣。<br>去現場也一樣，音量大不大無所謂，吵一點……至少比安靜像活人。",
+      "我對會讓我把話講完的人，還能多聊兩句。<br>講到一半被打斷、或用一句『我懂』把天聊死的，就沒下次了；不心動就是不心動。"
+    ],
+    cgDesc:"龐克女孩・黑短波波頭・齊劉海\n半臉 CG（左半構圖）",
+    line:"嘴硬隨你說。心裡怎麼晃，我不欠誰交代。",
+    hold: 6000 },
+
+  /* ③b 二號女嘉賓入場（接三連圖；與一號相同流程） */
+  { type:"card",
+    main:"有請——<em>二號女嘉賓</em>。",
+    sub:"在家被管得嚴、戀愛幾乎沒實戰——害羞起來，反而比誰都認真。",
+    hold: 3000 },
+
+  /* ④ 清純少女（陽光女孩｜三連圖 → 全幅入場 CG，流程同龐克少女） */
+  { type:"char",
+    tag:"女嘉賓 · 02",
+    name:"清純少女",
+    nameFontClass:"nf-innocent",
+    nameSub:"陽光 · 害羞 · 慢熱",
+    /* 三連圖：①黃昏背影花叢 ②草坡蹲下捧花 ③側面害羞遮臉 → 全幅 cg_full_enter（花園仰望微笑·花籃） */
+    cgPanels: [
+      "cg/sunshine_girl/panel_01.png",
+      "cg/sunshine_girl/panel_02.png",
+      "cg/sunshine_girl/panel_03.png"
+    ],
+    cgFinal: "cg/sunshine_girl/cg_full_enter.png",
+    cgPanelHints: ["花園 · 黃昏 · 背影花叢", "草坡 · 蹲下 · 捧花夕陽", "特寫 · 側面 · 害羞遮臉"],
+    cgTriptychTopics: ["性格", "興趣", "擇偶喜好"],
+    cgTriptychLines: [
+      "我家裡……管得有點嚴，戀愛這種事，幾乎都只在書上或電影裡看過。<br>真的遇到喜歡的男生，我會先愣住，話變很少，臉……大概比花還容易紅。",
+      "我很喜歡花，還有看起來亮亮的、香香的小東西；漂亮的風景也會讓我忍不住多看幾眼。<br>曬得到太陽的地方、安靜的小路……光是待著，心情就會變得很柔軟。",
+      "我大概不會一見面就很會聊；心動來得慢，也會很害羞。<br>如果你能放慢一點、聽我把話講完……我會很認真，也會很珍惜。"
+    ],
+    cgDesc:"陽光女孩・花園入場完整 CG\n白帽蕾絲洋裝・俯身仰望・花籃",
+    line:"所以……如果可以，請你讓我慢慢說。<br><em>你願意等的那些時刻，我都會悄悄記在心裡。</em>",
+    hold: 6000 },
+
+  /* ④b 三號女嘉賓入場（接三連圖；流程同龐克／清純少女） */
+  { type:"card",
+    main:"有請——<em>三號女嘉賓</em>。",
+    sub:"運動場上的女孩，熱血跟汗水才是日常；戀愛——聽起來跟她的人生，完全不沾邊。",
+    hold: 3000 },
+
+  /* ⑤ 運動少女（三連圖 → 全幅入場 CG） */
+  { type:"char",
+    tag:"女嘉賓 · 03",
+    name:"運動少女",
+    nameFontClass:"nf-athletic",
+    nameSub:"野性 · 直白 · 佔有欲強",
+    /* 三連圖：①背後熱身單腿拉伸 ②起跑預備地面仰角 ③正面奔跑喘氣 → 全幅 cg_full_enter（跑道拿水壺叉腰汗水微笑） */
+    cgPanels: [
+      "cg/athletic_girl/panel_01_stretch.png",
+      "cg/athletic_girl/panel_02_start.png",
+      "cg/athletic_girl/panel_03_run.png"
+    ],
+    cgFinal: "cg/athletic_girl/cg_full_enter.png",
+    cgPanelHints: ["背後 · 熱身 · 單腿拉伸", "起跑 · 地面仰角 · 蓄力", "正面 · 奔跑 · 喘氣"],
+    cgTriptychTopics: ["興趣", "過往", "戀愛觀"],
+    cgTriptychLines: [
+      "我喜歡運動，喜歡比賽，更喜歡競爭——站在會讓我心跳加速的對手面前，我才覺得自己活著。<br>跑道、訓練、拼到極限……對我來說不是折磨，是日常；贏，或者變得比昨天更強，這才是我真正在乎的事。",
+      "自從走上選手這條路，生活基本上只剩訓練和比賽——跟異性接觸的機會，老實說，幾乎是零。<br>反而這身偏男性化的樣子，常讓同性對我產生興趣；戀愛那回事，我很少真的有機會碰。",
+      "但我要說清楚——不是不想談，是還沒遇到值得我出手的。<br>要是真有比我更強、讓我服了氣的男人，我不會試探、不會拖；我會毫不猶豫，直接出擊。"
+    ],
+    cgDesc:"運動少女・深紅短波波頭・橙色虹膜・曬肌\n跑道・拿水壺叉腰・汗水微笑・全身入場 CG",
+    line:"我不等人來追我。<br>心動了，我就先靠近——<em>這才是我主動出擊的魅力。</em>",
+    hold: 6000 },
+
+  /* ⑥ 轉場字卡（男） */
+  { type:"card",
+    main:"然後呢，輪到狩獵",
+    sub:"紳士 · 刺蝟 · 汗水",
+    hold: 2600 },
+
+  /* ⑦ 體育男 */
+  { type:"char",
+    tag:"男嘉賓 · 01",
+    name:"體育男",
+    nameFontClass:"nf-sports",
+    nameSub:"體力 A · 爆發 · 直球",
+    cgDesc:"肌肉型男・爽朗笑容\n半臉 CG（右半構圖）",
+    line:"我要找的對手，最好也能變成最硬的隊友。",
+    hold: 7000 },
+
+  /* ⑧ 暖男 */
+  { type:"char",
+    tag:"男嘉賓 · 02",
+    name:"暖男",
+    nameFontClass:"nf-warm",
+    nameSub:"廚藝 A · 親和 · 溫柔陷阱",
+    cgDesc:"端著紅茶・禮貌微笑\n半臉 CG（右半構圖）",
+    line:"先坐吧。今天不管發生什麼，<br>至少別餓著。",
+    hold: 6800 },
+
+  /* ⑨ 高冷男 */
+  { type:"char",
+    tag:"男嘉賓 · 03",
+    name:"高冷男",
+    nameFontClass:"nf-cool",
+    nameSub:"魅力 A · 冷 · 層次感",
+    cgDesc:"雜誌遮半臉・只露眼睛\n半臉 CG（右半構圖）",
+    line:"好感可以買；層次不行。",
+    hold: 6200 },
+
+  /* ⑩ 轉場字卡（女第二波） */
+  { type:"card",
+    main:"還有人，沒對到頻率",
+    hold: 2400 },
+
+  /* ⑪ 貴氣大小姐 */
+  { type:"char",
+    tag:"女嘉賓 · 04",
+    name:"貴氣大小姐",
+    nameFontClass:"nf-lady",
+    nameSub:"從容 · 過來人 · 一旦喜歡就是溫柔大姐姐",
+    cgDesc:"淺藍銀色中長波浪髮・側分\n半臉 CG（左半構圖）",
+    line:"我來，是看誰還值得我親自彎一次腰。",
+    hold: 6800 },
+
+  /* ⑫ 地雷少女 */
+  { type:"char",
+    tag:"女嘉賓 · 05",
+    name:"地雷少女",
+    nameFontClass:"nf-mine",
+    nameSub:"頻率獨特 · 難以接入 · 執念式深愛",
+    cgDesc:"淺粉高馬尾・黑貓耳蝴蝶結・空靈眼神\n半臉 CG（左半構圖）",
+    loadingTxt:"載入中……",
+    line:"欸？這題是加分題嗎？<br>那我要用貓咪語回答可以嗎——喵？",
+    hold: 7500 },
+
+  /* ⑬ 轉場字卡（VIP） */
+  { type:"card",
+    main:"最後一位，不適合剪進預告",
+    sub:"特邀來賓：規則以外的變數",
+    hold: 2800 },
+
+  /* ⑭ 男主角 */
+  { type:"char",
+    tag:"VIP · 特邀",
+    name:"男主角",             // ← 後面換本名
+    nameFontClass:"nf-mc",
+    nameSub:"安靜 · 重心穩 · 說話少但說到點子上",
+    cgDesc:"黑色凌亂短髮・厚重瀏海幾乎遮眼\n半臉 CG（左半，背光剪影感）",
+    line:"嗯。<br><em>……然後呢。</em>",
+    hold: 7200 },
+
+  /* ⑮ LOGO 收尾 */
+  { type:"card", variant:"logo no-line",
+    main:"歡迎收看——<em>禁忌的 Show</em>。",
+    hold: 5000 },
+];
+
+// ═══════════════════════════════════════════════════
+// 建立幀元素
+// ═══════════════════════════════════════════════════
+function buildFrame(item) {
+  const el = document.createElement("div");
+  el.className = "frame";
+
+  if (item.type === "card") {
+    /* ── 字卡幀 ── */
+    el.classList.add("card-frame");
+    if (item.variant) item.variant.split(" ").forEach(v => el.classList.add(v));
+
+    const main = document.createElement("div");
+    main.className = "card-main";
+    main.innerHTML = item.main;
+    el.appendChild(main);
+
+    if (item.sub) {
+      const sub = document.createElement("div");
+      sub.className = "card-sub";
+      sub.textContent = item.sub;
+      el.appendChild(sub);
+    }
+
+  } else {
+    /* ── 角色幀 ── */
+    el.classList.add("char-frame");
+    if (item.nameFontClass) el.classList.add(item.nameFontClass);
+
+    const cgBg = document.createElement("div");
+    cgBg.className = "cg-bg";
+
+    const hasTriptych = Array.isArray(item.cgPanels) && item.cgPanels.length === 3;
+    const panelHints = item.cgPanelHints || ["全景 · 前行", "俯視 · 背影重心", "側臉 · 特寫"];
+
+    if (hasTriptych) {
+      const stageTrip = document.createElement("div");
+      stageTrip.className = "cg-stage cg-stage-triptych";
+
+      item.cgPanels.forEach((src, i) => {
+        const panel = document.createElement("div");
+        panel.className = "cg-panel";
+        const url = (src && String(src).trim()) ? String(src).trim() : "";
+        if (url) {
+          const img = document.createElement("img");
+          img.className = "cg-panel-img";
+          img.alt = "";
+          img.src = url;
+          panel.appendChild(img);
+        } else {
+          const ph = document.createElement("div");
+          ph.className = "cg-panel-ph";
+          const hint = panelHints[i] || `角度 ${i + 1}`;
+          ph.innerHTML = `<strong>[ 連貫圖 ${i + 1} ]</strong><span>${hint}</span>`;
+          panel.appendChild(ph);
+        }
+        stageTrip.appendChild(panel);
+      });
+      cgBg.appendChild(stageTrip);
+
+      const stageFull = document.createElement("div");
+      stageFull.className = "cg-stage cg-stage-full cg-stage-final-reveal";
+      const fullInner = document.createElement("div");
+      fullInner.className = "cg-full-inner";
+      const finalUrl = (item.cgFinal && String(item.cgFinal).trim()) ? String(item.cgFinal).trim() : "";
+      if (finalUrl) {
+        const img = document.createElement("img");
+        img.className = "cg-full-img";
+        img.alt = "";
+        img.src = finalUrl;
+        fullInner.appendChild(img);
+      } else {
+        const ph = document.createElement("div");
+        ph.className = "cg-placeholder";
+        ph.innerHTML = `<strong>[ 完整 CG ]</strong>${item.cgDesc.replace(/\n/g,"<br>")}`;
+        fullInner.appendChild(ph);
+      }
+      stageFull.appendChild(fullInner);
+      cgBg.appendChild(stageFull);
+
+      el._hasTriptych = true;
+      el._cgStageTrip = stageTrip;
+      el._cgStageFull = stageFull;
+      el._cgPanels = Array.from(stageTrip.querySelectorAll(".cg-panel"));
+    } else {
+      const stageFull = document.createElement("div");
+      stageFull.className = "cg-stage cg-stage-full cg-stage-full-only";
+      const fullInnerOnly = document.createElement("div");
+      fullInnerOnly.className = "cg-full-inner";
+      const cgPh = document.createElement("div");
+      cgPh.className = "cg-placeholder";
+      cgPh.innerHTML = `<strong>[ 此處放圖 ]</strong>${item.cgDesc.replace(/\n/g,"<br>")}`;
+      fullInnerOnly.appendChild(cgPh);
+      stageFull.appendChild(fullInnerOnly);
+      cgBg.appendChild(stageFull);
+      el._hasTriptych = false;
+    }
+
+    el.appendChild(cgBg);
+
+    // 2. 疊層容器
+    const overlay = document.createElement("div");
+    overlay.className = "char-overlay";
+
+    // ── Phase A：名字層 ──
+    const nameLayer = document.createElement("div");
+    nameLayer.className = "name-layer";
+
+    // 左側縱排
+    const nameLeft = document.createElement("div");
+    nameLeft.className = "name-left";
+
+    const nameTag = document.createElement("div");
+    nameTag.className = "name-tag";
+    nameTag.textContent = item.tag;
+
+    const nameBig = document.createElement("div");
+    nameBig.className = "name-big";
+    nameBig.textContent = item.name;
+
+    nameLeft.appendChild(nameTag);
+    nameLeft.appendChild(nameBig);
+
+    // 底部橫排
+    const nameBottom = document.createElement("div");
+    nameBottom.className = "name-bottom";
+
+    const nbLabel = document.createElement("div");
+    nbLabel.className = "name-bottom-label";
+    nbLabel.textContent = item.tag;
+
+    const nbMain = document.createElement("div");
+    nbMain.className = "name-bottom-main";
+    nbMain.textContent = item.name;
+
+    const nbSub = document.createElement("div");
+    nbSub.className = "name-bottom-sub";
+    nbSub.textContent = item.nameSub || "";
+
+    nameBottom.appendChild(nbLabel);
+    nameBottom.appendChild(nbMain);
+    if (item.nameSub) nameBottom.appendChild(nbSub);
+
+    nameLayer.appendChild(nameLeft);
+    nameLayer.appendChild(nameBottom);
+
+    // ── Phase B：台詞層 ──
+    const lineLayer = document.createElement("div");
+    lineLayer.className = "line-layer";
+
+    const lineInner = document.createElement("div");
+    lineInner.className = "line-inner";
+
+    const lineSpeaker = document.createElement("div");
+    lineSpeaker.className = "line-speaker";
+    lineSpeaker.textContent = item.name;
+
+    lineInner.appendChild(lineSpeaker);
+
+    const lineTriptychTopic = document.createElement("div");
+    lineTriptychTopic.className = "line-triptych-topic";
+    lineInner.appendChild(lineTriptychTopic);
+
+    if (item.loadingTxt) {
+      const loading = document.createElement("div");
+      loading.className = "line-loading";
+      loading.textContent = item.loadingTxt;
+      lineInner.appendChild(loading);
+    }
+
+    const lineText = document.createElement("div");
+    lineText.className = "line-text";
+    lineText.dataset.raw = item.line;   // 儲存原始 HTML，打字時逐字填入
+    lineInner.appendChild(lineText);
+
+    lineLayer.appendChild(lineInner);
+
+    overlay.appendChild(nameLayer);
+    overlay.appendChild(lineLayer);
+    el.appendChild(overlay);
+
+    el._nameLayer = nameLayer;
+    el._lineLayer = lineLayer;
+    el._lineText  = lineText;
+    el._nameHold  = item.nameHold || 1800;
+    el._twGen = { g: 0 };
+  }
+
+  return el;
+}
+
+// ═══════════════════════════════════════════════════
+// 打字機效果
+// ═══════════════════════════════════════════════════
+
+// 把 innerHTML 拆成 [{type:'text'|'em'|'br', content}] 的 segment 陣列
+function parseSegments(html) {
+  const segs = [];
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html;
+  for (const node of tmp.childNodes) {
+    if (node.nodeType === 3 && node.textContent) {
+      segs.push({ type:"text", content: node.textContent });
+    } else if (node.nodeName === "BR") {
+      segs.push({ type:"br" });
+    } else if (node.nodeName === "EM") {
+      segs.push({ type:"em", content: node.textContent });
+    }
+  }
+  return segs;
+}
+
+// 逐字打出；支援 <br> 與 <em>；genHolder 變更時中止前一段打字；onComplete 可選
+function typewrite(el, speedMs = 60, genHolder, onComplete) {
+  const holder = genHolder || { g: 0 };
+  const onDone = typeof onComplete === "function" ? onComplete : null;
+  const gen = ++holder.g;
+  el.innerHTML = "";
+  const segs = parseSegments(el.dataset.raw || "");
+
+  // 展平成字符佇列
+  const queue = [];
+  for (const seg of segs) {
+    if (seg.type === "br") {
+      queue.push({ ch:null, type:"br" });
+    } else {
+      for (const ch of seg.content) {
+        queue.push({ ch, type: seg.type });
+      }
+    }
+  }
+
+  let idx = 0;
+  let curNode = null;
+  let curType = null;
+
+  function tick() {
+    if (holder.g !== gen) return;
+    if (idx >= queue.length) {
+      if (onDone) onDone();
+      return;
+    }
+    const { ch, type } = queue[idx++];
+
+    if (type === "br") {
+      el.appendChild(document.createElement("br"));
+      curNode = null; curType = null;
+    } else if (type !== curType) {
+      // 切換節點類型
+      if (type === "em") {
+        curNode = document.createElement("em");
+      } else {
+        curNode = document.createElement("span");
+      }
+      el.appendChild(curNode);
+      curType = type;
+      curNode.textContent = ch;
+    } else {
+      curNode.textContent += ch;
+    }
+
+    // 標點符號停頓久一點
+    const pause = /[。，？！——…]/.test(ch) ? speedMs * 5 : speedMs;
+    setTimeout(tick, pause);
+  }
+
+  tick();
+}
+
+// 預估打字完成需要多少 ms
+function estimateTypingMs(rawHtml, speed = 65) {
+  const text = rawHtml.replace(/<[^>]+>/g, "");
+  let ms = 0;
+  for (const ch of text) {
+    ms += /[。，？！——…]/.test(ch) ? speed * 5 : speed;
+  }
+  return ms;
+}
+
+const CG_REVEAL_MS = 980;  // 配合 CSS clip-path transition 0.95s
+const TRIPTYCH_STAGGER_MS = 620;  // 無分段台詞時，三格圖的間隔
+/** 有 cgTriptychLines 時：上一段台詞打完後，停留多久再出下一格圖 + 打下一段 */
+const TRIPTYCH_BETWEEN_SEGMENTS_MS = 1100;
+/** 第三段講完後，再停一下才收台詞 / 切全幅 */
+const TRIPTYCH_AFTER_LAST_PANEL_MS = 1650;
+/** 第三段台詞淡出（需配合 .line-layer transition ~0.6s）後才出全幅 CG */
+const TRIPTYCH_LAST_LINE_FADEOUT_MS = 620;
+const TRIPTYCH_TO_FULL_MS = 880;
+const TRIPTYCH_LINE_PADDING_MS = 220;
+/** 最後全幅 CG：名字卡停留時間，之後淡出再接對白 */
+const FINAL_CG_NAME_HOLD_MS = 2600;
+/** 需 ≥ .name-layer transition（0.8s）*/
+const NAME_LAYER_FADEOUT_MS = 850;
+/** 完整 CG 收尾台詞打完後，畫面上再停多久才切下一幀（含原 600ms 停留） */
+const FINAL_DIALOGUE_PAUSE_MS = 1100;
+const LINE_LAYER_HIDE_MS = 650;
+
+function finalCgPreDialogueMs() {
+  return FINAL_CG_NAME_HOLD_MS + NAME_LAYER_FADEOUT_MS;
+}
+
+function startFinalDialogueOnly(el) {
+  if (!el._lineLayer || !el._lineText) return;
+  el._lineLayer.classList.add("show");
+  typewrite(el._lineText, 65, el._twGen);
+  const typingMs = estimateTypingMs(el._lineText.dataset.raw || "", 65);
+  setTimeout(() => {
+    el._lineLayer.classList.remove("show");
+  }, typingMs + 600 + FINAL_DIALOGUE_PAUSE_MS);
+}
+
+/** 完整 CG 就緒後：名字卡 → 消失 → 收尾台詞（不再次加名字） */
+function scheduleNameCardThenFinalDialogue(el) {
+  if (!el._nameLayer) {
+    startFinalDialogueOnly(el);
+    return;
+  }
+  el._nameLayer.classList.add("show");
+  setTimeout(() => {
+    el._nameLayer.classList.remove("show");
+    setTimeout(() => startFinalDialogueOnly(el), NAME_LAYER_FADEOUT_MS);
+  }, FINAL_CG_NAME_HOLD_MS);
+}
+
+function charHasTriptych(item) {
+  return item.type === "char" && Array.isArray(item.cgPanels) && item.cgPanels.length === 3;
+}
+
+function charUsesTriptychDialogue(item) {
+  return charHasTriptych(item) && Array.isArray(item.cgTriptychLines) && item.cgTriptychLines.length === 3;
+}
+
+/** 分段台詞：每格「出圖 → 打字 → 停頓」串接後，切全幅 CG 的時間點（由台詞長度推算，供 hold 加算） */
+function getTriptychCrossfadeAtChained(item) {
+  const t0 = CG_REVEAL_MS;
+  const lines = item.cgTriptychLines;
+  let t = t0;
+  for (let i = 0; i < 3; i++) {
+    t += estimateTypingMs(lines[i] || "", 65);
+    if (i < 2) t += TRIPTYCH_BETWEEN_SEGMENTS_MS;
+  }
+  return t + TRIPTYCH_AFTER_LAST_PANEL_MS;
+}
+
+/** 第三格已出現後（無分段台詞時），切全幅 CG 的時間點 */
+function getTriptychCrossfadeAt(item) {
+  if (charUsesTriptychDialogue(item)) {
+    return getTriptychCrossfadeAtChained(item);
+  }
+  const t0 = CG_REVEAL_MS;
+  const lastPanelAt = t0 + TRIPTYCH_STAGGER_MS * 2;
+  return lastPanelAt + TRIPTYCH_AFTER_LAST_PANEL_MS;
+}
+
+/** 確保整段結束前不會被 hold 截斷（有三連圖者） */
+function computeTriptychHoldExtra(item) {
+  if (!charHasTriptych(item)) return 0;
+  const crossfadeAt = getTriptychCrossfadeAt(item);
+  const lastLineFade = charUsesTriptychDialogue(item) ? TRIPTYCH_LAST_LINE_FADEOUT_MS : 0;
+  const fullCgSettleDone = crossfadeAt + lastLineFade + TRIPTYCH_TO_FULL_MS + TRIPTYCH_LINE_PADDING_MS;
+  const finalLineStart = fullCgSettleDone + finalCgPreDialogueMs();
+  const finalTyping = estimateTypingMs(item.line || "", 65);
+  const totalMs = finalLineStart + finalTyping + 600 + FINAL_DIALOGUE_PAUSE_MS + LINE_LAYER_HIDE_MS;
+  return Math.max(0, totalMs - item.hold);
+}
+
+/** 角色幀：無三連圖時，依「CG 展開 → 名字 → 收尾對白 → 停頓」推算最少停留 */
+function computeSingleCgHoldExtra(item) {
+  if (item.type !== "char") return 0;
+  if (charHasTriptych(item)) return 0;
+  const startFinalTyping = CG_REVEAL_MS + finalCgPreDialogueMs();
+  const finalTyping = estimateTypingMs(item.line || "", 65);
+  const totalMs = startFinalTyping + finalTyping + 600 + FINAL_DIALOGUE_PAUSE_MS + LINE_LAYER_HIDE_MS;
+  return Math.max(0, totalMs - item.hold);
+}
+
+function computeCharHoldExtra(item) {
+  if (item.type !== "char") return 0;
+  return computeTriptychHoldExtra(item) + computeSingleCgHoldExtra(item);
+}
+
+/** 三連圖 → 完整 CG → 名字卡 → 收尾台詞（line） */
+function runCharCgThenLine(el, item) {
+  if (!el._hasTriptych || !el._cgStageTrip || !el._cgStageFull || !el._cgPanels) {
+    setTimeout(() => scheduleNameCardThenFinalDialogue(el), CG_REVEAL_MS);
+    return;
+  }
+  const panels = el._cgPanels;
+  el._cgStageTrip.classList.remove("is-hidden");
+  el._cgStageFull.classList.remove("is-visible");
+  panels.forEach(p => p.classList.remove("is-visible"));
+
+  const lineTopicEl = el.querySelector(".line-triptych-topic");
+  const twGen = el._twGen;
+  const t0 = CG_REVEAL_MS;
+  const topics = item.cgTriptychTopics || ["性格", "興趣", "擇偶喜好"];
+  const useDialog = charUsesTriptychDialogue(item);
+
+  if (useDialog) {
+    el._lineLayer.classList.add("show");
+    el._lineLayer.classList.add("triptych-active");
+    if (lineTopicEl) lineTopicEl.textContent = "";
+
+    const speed = 65;
+    const PAD = TRIPTYCH_BETWEEN_SEGMENTS_MS;
+
+    function goStep(i) {
+      panels[i].classList.add("is-visible");
+      if (lineTopicEl) lineTopicEl.textContent = topics[i] || "";
+      el._lineText.dataset.raw = item.cgTriptychLines[i];
+      typewrite(el._lineText, speed, twGen, () => {
+        if (i < 2) {
+          setTimeout(() => goStep(i + 1), PAD);
+        } else {
+          setTimeout(() => {
+            el._lineLayer.classList.remove("show");
+            setTimeout(() => {
+              el._cgStageTrip.classList.add("is-hidden");
+              el._cgStageFull.classList.add("is-visible");
+              setTimeout(() => {
+                el._lineLayer.classList.remove("triptych-active");
+                if (lineTopicEl) lineTopicEl.textContent = "";
+                el._lineText.dataset.raw = item.line;
+                scheduleNameCardThenFinalDialogue(el);
+              }, TRIPTYCH_TO_FULL_MS + TRIPTYCH_LINE_PADDING_MS);
+            }, TRIPTYCH_LAST_LINE_FADEOUT_MS);
+          }, TRIPTYCH_AFTER_LAST_PANEL_MS);
+        }
+      });
+    }
+
+    setTimeout(() => goStep(0), t0);
+    return;
+  }
+
+  panels.forEach((panel, i) => {
+    setTimeout(() => panel.classList.add("is-visible"), t0 + TRIPTYCH_STAGGER_MS * i);
+  });
+
+  const crossfadeAt = getTriptychCrossfadeAt(item);
+
+  setTimeout(() => {
+    el._cgStageTrip.classList.add("is-hidden");
+    el._cgStageFull.classList.add("is-visible");
+  }, crossfadeAt);
+
+  setTimeout(() => {
+    scheduleNameCardThenFinalDialogue(el);
+  }, crossfadeAt + TRIPTYCH_TO_FULL_MS + TRIPTYCH_LINE_PADDING_MS);
+}
+
+// ═══════════════════════════════════════════════════
+// 播放控制
+// ═══════════════════════════════════════════════════
+const stage    = document.getElementById("stage");
+const progress = document.getElementById("progress");
+const seqLabel = document.getElementById("seq-label");
+const total    = SEQUENCE.length;
+
+// VIP 面板元素
+const vipPanel   = document.getElementById("vip-panel");
+const vipName    = document.getElementById("vip-name");
+const vipLine    = document.getElementById("vip-line");
+const vipConfirm = document.getElementById("vip-confirm");
+
+// VIP 幀的序列索引（⑭，0-based → SEQUENCE 中 name:"男主角" 那筆）
+const VIP_IDX = SEQUENCE.findIndex(s => s.type === "char" && s.tag && s.tag.startsWith("VIP"));
+
+const frames = SEQUENCE.map(item => {
+  const el = buildFrame(item);
+  stage.appendChild(el);
+  return el;
+});
+
+let pendingIdx = null;   // 面板開啟時暫存的下一幀索引
+
+// ── 開啟 VIP 面板 ──
+function openVipPanel(afterIdx) {
+  pendingIdx = afterIdx;
+  vipPanel.classList.add("open");
+  setTimeout(() => vipName.focus(), 400);
+}
+
+// ── 關閉面板並繼續播放 ──
+function closeVipPanel() {
+  const name    = vipName.value.trim() || "你";
+  const lineRaw = vipLine.value.trim() || "嗯。";
+
+  // 更新 VIP 幀的顯示名稱與台詞
+  const vipFrame = frames[VIP_IDX];
+  if (vipFrame) {
+    // 左側縱排大字
+    const nameBig = vipFrame.querySelector(".name-big");
+    if (nameBig) nameBig.textContent = name;
+
+    // 底部橫排主名
+    const nbMain = vipFrame.querySelector(".name-bottom-main");
+    if (nbMain) nbMain.textContent = name;
+
+    // 台詞層：speaker hint + lineText
+    const speaker = vipFrame.querySelector(".line-speaker");
+    if (speaker) speaker.textContent = name;
+
+    const lineText = vipFrame._lineText;
+    if (lineText) lineText.dataset.raw = lineRaw;
+  }
+
+  // 按鈕 flash 動畫
+  vipConfirm.classList.add("flash");
+  setTimeout(() => {
+    vipConfirm.classList.remove("flash");
+    vipPanel.classList.remove("open");
+    setTimeout(() => showFrame(pendingIdx), 300);
+  }, 350);
+}
+
+vipConfirm.addEventListener("click", closeVipPanel);
+
+// Enter 快捷（姓名欄）
+vipName.addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); vipLine.focus(); }
+});
+
+// ── 主播放函式 ──
+function showFrame(idx) {
+  if (idx >= total) return;
+
+  const item = SEQUENCE[idx];
+  const el   = frames[idx];
+
+  progress.style.width = `${((idx + 1) / total) * 100}%`;
+  seqLabel.textContent = `${idx + 1} / ${total}`;
+
+  requestAnimationFrame(() => {
+    el.classList.add("visible");   // 觸發 CG clip-path 展開
+
+    if (el._nameLayer && el._lineLayer) {
+      runCharCgThenLine(el, item);
+    }
+  });
+
+  const holdExtra = computeCharHoldExtra(item);
+
+  // VIP 轉場字卡播完後，攔截並開啟面板
+  const nextIdx = idx + 1;
+  const isVipGate = (nextIdx === VIP_IDX);
+
+  setTimeout(() => {
+    el.classList.add("fade-out");
+    el.classList.remove("visible");
+    setTimeout(() => {
+      if (isVipGate) {
+        openVipPanel(nextIdx);   // 暫停等玩家輸入
+      } else {
+        showFrame(nextIdx);
+      }
+    }, 680);
+  }, item.hold + holdExtra);
+}
+
+showFrame(0);
+</script>
+</body>
+</html>
