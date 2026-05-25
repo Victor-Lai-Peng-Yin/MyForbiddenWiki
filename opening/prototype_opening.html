@@ -18,6 +18,23 @@
     overflow: hidden;
   }
 
+  /* 按住空白鍵快轉：縮短主要過場動畫 */
+  body.fast-forward .frame,
+  body.fast-forward .frame.fade-out,
+  body.fast-forward .card-frame::before,
+  body.fast-forward .cg-stage-triptych,
+  body.fast-forward .cg-panel,
+  body.fast-forward .cg-stage-full,
+  body.fast-forward .cg-stage-full.cg-stage-final-reveal,
+  body.fast-forward .cg-stage-full.cg-stage-final-reveal::after,
+  body.fast-forward .cg-full-inner,
+  body.fast-forward .cg-bg,
+  body.fast-forward .name-layer,
+  body.fast-forward .line-layer {
+    transition-duration: 0.08s !important;
+    transition-delay: 0s !important;
+  }
+
   #stage {
     width: 100vw;
     height: 100vh;
@@ -288,6 +305,39 @@
   }
   .name-layer.show { opacity: 1; }
 
+  /* 名字區漸層黑底：左側縱排 + 底部橫排，避免白字在淺色 CG 上不明顯 */
+  .name-layer::before,
+  .name-layer::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .name-layer::before {
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(42vw, 520px);
+    background: linear-gradient(
+      to right,
+      rgba(0, 0, 0, 0.82) 0%,
+      rgba(0, 0, 0, 0.48) 55%,
+      transparent 100%
+    );
+  }
+  .name-layer::after {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: min(42vh, 360px);
+    background: linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.88) 0%,
+      rgba(0, 0, 0, 0.52) 45%,
+      transparent 100%
+    );
+  }
+
   /* 左側：身份小標 + 縱向大名 */
   .name-left {
     position: absolute;
@@ -298,6 +348,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.8rem;
+    z-index: 1;
   }
   .name-tag {
     font-family: "Noto Sans TC", sans-serif;
@@ -330,6 +381,7 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    z-index: 1;
   }
   .name-bottom-label {
     font-family: "Noto Sans TC", sans-serif;
@@ -343,6 +395,14 @@
     letter-spacing: 0.22em;
     color: #fff;
     line-height: 1.15;
+  }
+  /* 本名樣式：較小且帶有透明度 */
+  .name-bottom-full {
+    font-family: "Noto Sans TC", sans-serif;
+    font-size: clamp(0.8rem, 1.2vw, 1.1rem);
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.6);
+    margin-top: -0.2rem;
   }
   .name-bottom-sub {
     font-family: "Noto Sans TC", sans-serif;
@@ -451,11 +511,17 @@
     display: none !important;
   }
   .line-text {
-    font-size: clamp(1.15rem, 2.4vw, 2rem);
+    font-size: clamp(1rem, 2.1vw, 1.75rem);
     font-weight: 300;
-    line-height: 1.85;
+    line-height: 1.75;
     letter-spacing: 0.1em;
     color: rgba(255,255,255,0.88);
+    /* 單次顯示最多兩行（由 typewritePaged 分頁；此處防極窄螢幕溢出） */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
   }
   .line-text em {
     font-style: normal;
@@ -651,8 +717,13 @@
     </div>
 
     <div class="vip-field">
-      <label>你的姓名</label>
-      <input id="vip-name" type="text" maxlength="12" placeholder="輸入名字……" autocomplete="off" />
+      <label>你的小名</label>
+      <input id="vip-name" type="text" maxlength="12" placeholder="輸入小名（顯示在左側大字）……" autocomplete="off" />
+    </div>
+
+    <div class="vip-field">
+      <label>你的本名</label>
+      <input id="vip-fullname" type="text" maxlength="20" placeholder="輸入本名（顯示在底部主名）……" autocomplete="off" />
     </div>
 
     <div class="vip-field">
@@ -668,8 +739,9 @@
 // ═══════════════════════════════════════════════════
 // 序列定義
 // 角色幀可選：cgPanels: [左,中,右] → cgFinal 全幅 CG。（路徑可為 ""，顯示佔位至置入圖檔，見 cg/sunshine_girl/README.txt）
-// 若加 cgTriptychLines（長度 3），三連圖階段底部會依序顯示台詞（對應每格圖）；
+// cgTriptychLines 每段含 <br> 分行；每次畫面最多顯示一行（視覺上最多兩行），超出由 typewritePaged 分頁接續。
 // cgTriptychTopics 可選，預設「性格 / 興趣 / 擇偶喜好」。全幅 CG 後再播原本的 line。
+// VIP 角色可另設 lineOs：玩家於面板輸入的台詞先播，再接 lineOs。
 // nameFontClass：角色名字 + 說話者標籤字形，對應 head 載入之 Google Fonts（nf-punk / nf-innocent …）。
 // ═══════════════════════════════════════════════════
 const SEQUENCE = [
@@ -678,6 +750,24 @@ const SEQUENCE = [
   { type:"card", variant:"warning no-line",
     main:"18+ · 虛構節目 · 所有感覺均屬真實。",
     hold: 2600 },
+
+  /* 新增字卡 1：欲望支配 */
+  { type:"card",
+    main:"欲望，才是這裡唯一的支配者。",
+    sub:"文明，不過是掩蓋獸性的薄紗。",
+    hold: 3000 },
+
+  /* 新增字卡 2：畜生求偶 */
+  { type:"card",
+    main:"畜生求偶，只需要最原始的交配。",
+    sub:"而人類，只是把這場交配，包裝成了『戀愛』。",
+    hold: 3500 },
+
+  /* 新增字卡 3：剝離偽裝 */
+  { type:"card",
+    main:"脫掉偽裝，露出你的獠牙。",
+    sub:"歡迎來到，最真實的獵場。",
+    hold: 3000 },
 
   /* ② 節目定位 */
   { type:"card",
@@ -694,25 +784,26 @@ const SEQUENCE = [
   /* ③ 搖滾少女 */
   { type:"char",
     tag:"女嘉賓 · 01",
-    name:"搖滾少女",           // ← 後面換本名
+    name:"林奈",
+    fullName:"黑澤 奈津",
     nameFontClass:"nf-punk",
     nameSub:"龐克 · 叛逆 · 外冷內熱",
-    /* 三連圖：左→右 正面全身 → 俯視 → 側臉；cgFinal 為完整半身入場 CG */
+    /* 三連圖：左→右 背影錄音 → 手部特寫 → 坐姿低頭彈吉他；cgFinal 為完整半身入場 CG */
     cgPanels: [
-      "cg/rock_girl/panel_01_front.png",
-      "cg/rock_girl/panel_02_top.png",
-      "cg/rock_girl/panel_03_side.png"
+      "cg/rock_girl/panel_01_back_recording.png",
+      "cg/rock_girl/panel_02_hands_guitar.png",
+      "cg/rock_girl/panel_03_seated_playing.png"
     ],
     cgFinal: "cg/rock_girl/cg_full_enter.png",
-    cgPanelHints: ["走廊前行 · 全身", "俯視 · 吉他箱重心", "側臉 · 特寫"],
-    cgTriptychTopics: ["性格", "興趣", "擇偶喜好"],
+    cgPanelHints: ["背影 · 錄音室 · 麥克風前", "手部特寫 · 按弦 · 尖釘手環", "坐姿 · 低頭 · 沉浸其中"],
+    cgTriptychTopics: ["性格", "音樂", "在找什麼"],
     cgTriptychLines: [
-      "我大概就長這樣，看起來不好惹，話也不多。<br>你要靠近可以，先講清楚你是認真還是玩玩；我沒空陪誰試水溫。",
-      "音樂跟吉他，只是背久了就變成習慣。<br>去現場也一樣，音量大不大無所謂，吵一點……至少比安靜像活人。",
-      "我對會讓我把話講完的人，還能多聊兩句。<br>講到一半被打斷、或用一句『我懂』把天聊死的，就沒下次了；不心動就是不心動。"
+      "話少不是高冷——開口前，我先確認值不值得。<br>要靠近可以，先說清楚是認真還是好奇。",
+      "吉他比我誠實，每個音都是說不出口的話。<br>你問我心情，我不一定答——聽見什麼就是什麼。",
+      "不必懂我彈什麼。<br>我沉浸時別打斷——做得到的人，比你以為的少。"
     ],
     cgDesc:"龐克女孩・黑短波波頭・齊劉海\n半臉 CG（左半構圖）",
-    line:"嘴硬隨你說。心裡怎麼晃，我不欠誰交代。",
+    line:"沒在期待被誰懂。你真的聽見了……那就算了。",
     hold: 6000 },
 
   /* ③b 二號女嘉賓入場（接三連圖；與一號相同流程） */
@@ -724,7 +815,8 @@ const SEQUENCE = [
   /* ④ 清純少女（陽光女孩｜三連圖 → 全幅入場 CG，流程同龐克少女） */
   { type:"char",
     tag:"女嘉賓 · 02",
-    name:"清純少女",
+    name:"優花",
+    fullName:"淺倉 優花",
     nameFontClass:"nf-innocent",
     nameSub:"陽光 · 害羞 · 慢熱",
     /* 三連圖：①黃昏背影花叢 ②草坡蹲下捧花 ③側面害羞遮臉 → 全幅 cg_full_enter（花園仰望微笑·花籃） */
@@ -737,12 +829,12 @@ const SEQUENCE = [
     cgPanelHints: ["花園 · 黃昏 · 背影花叢", "草坡 · 蹲下 · 捧花夕陽", "特寫 · 側面 · 害羞遮臉"],
     cgTriptychTopics: ["性格", "興趣", "擇偶喜好"],
     cgTriptychLines: [
-      "我家裡……管得有點嚴，戀愛這種事，幾乎都只在書上或電影裡看過。<br>真的遇到喜歡的男生，我會先愣住，話變很少，臉……大概比花還容易紅。",
-      "我很喜歡花，還有看起來亮亮的、香香的小東西；漂亮的風景也會讓我忍不住多看幾眼。<br>曬得到太陽的地方、安靜的小路……光是待著，心情就會變得很柔軟。",
-      "我大概不會一見面就很會聊；心動來得慢，也會很害羞。<br>如果你能放慢一點、聽我把話講完……我會很認真，也會很珍惜。"
+      "家裡管得嚴，戀愛幾乎只在書或電影裡看過。<br>真遇到喜歡的人，我會愣住——臉比花還容易紅。",
+      "喜歡花，還有亮亮香香的小東西。<br>有太陽、有安靜小路的地方，待著心情就會變軟。",
+      "不會一見面就很會聊，心動來得慢。<br>你能放慢、聽我把話講完——我會很認真。"
     ],
     cgDesc:"陽光女孩・花園入場完整 CG\n白帽蕾絲洋裝・俯身仰望・花籃",
-    line:"所以……如果可以，請你讓我慢慢說。<br><em>你願意等的那些時刻，我都會悄悄記在心裡。</em>",
+    line:"所以……如果可以，請讓我慢慢說。<br><em>你願意等的時刻，我都會記在心裡。</em>",
     hold: 6000 },
 
   /* ④b 三號女嘉賓入場（接三連圖；流程同龐克／清純少女） */
@@ -754,7 +846,8 @@ const SEQUENCE = [
   /* ⑤ 運動少女（三連圖 → 全幅入場 CG） */
   { type:"char",
     tag:"女嘉賓 · 03",
-    name:"運動少女",
+    name:"彩香",
+    fullName:"日向 彩香",
     nameFontClass:"nf-athletic",
     nameSub:"野性 · 直白 · 佔有欲強",
     /* 三連圖：①背後熱身單腿拉伸 ②起跑預備地面仰角 ③正面奔跑喘氣 → 全幅 cg_full_enter（跑道拿水壺叉腰汗水微笑） */
@@ -767,9 +860,9 @@ const SEQUENCE = [
     cgPanelHints: ["背後 · 熱身 · 單腿拉伸", "起跑 · 地面仰角 · 蓄力", "正面 · 奔跑 · 喘氣"],
     cgTriptychTopics: ["興趣", "過往", "戀愛觀"],
     cgTriptychLines: [
-      "我喜歡運動，喜歡比賽，更喜歡競爭——站在會讓我心跳加速的對手面前，我才覺得自己活著。<br>跑道、訓練、拼到極限……對我來說不是折磨，是日常；贏，或者變得比昨天更強，這才是我真正在乎的事。",
-      "自從走上選手這條路，生活基本上只剩訓練和比賽——跟異性接觸的機會，老實說，幾乎是零。<br>反而這身偏男性化的樣子，常讓同性對我產生興趣；戀愛那回事，我很少真的有機會碰。",
-      "但我要說清楚——不是不想談，是還沒遇到值得我出手的。<br>要是真有比我更強、讓我服了氣的男人，我不會試探、不會拖；我會毫不猶豫，直接出擊。"
+      "我喜歡比賽，更喜歡競爭——對手讓我心跳加速。<br>訓練拼到極限是日常；贏，或比昨天更強。",
+      "走上選手這條路，生活只剩訓練和比賽。<br>跟異性接觸幾乎是零——戀愛，很少真有機會碰。",
+      "不是不想談，是還沒遇到值得出手的。<br>真有讓我服氣的人——我會直接出擊。"
     ],
     cgDesc:"運動少女・深紅短波波頭・橙色虹膜・曬肌\n跑道・拿水壺叉腰・汗水微笑・全身入場 CG",
     line:"我不等人來追我。<br>心動了，我就先靠近——<em>這才是我主動出擊的魅力。</em>",
@@ -777,70 +870,152 @@ const SEQUENCE = [
 
   /* ⑥ 轉場字卡（男） */
   { type:"card",
-    main:"然後呢，輪到狩獵",
-    sub:"紳士 · 刺蝟 · 汗水",
+    main:"接下來呢，輪到狩獵者入場。",
+    sub:"直球 · 溫柔 · 攪局",
     hold: 2600 },
 
-  /* ⑦ 體育男 */
+  /* ⑦ 體育男（健身教練）*/
   { type:"char",
     tag:"男嘉賓 · 01",
-    name:"體育男",
+    name:"阿健",
+    fullName:"佐佐木 健太",
     nameFontClass:"nf-sports",
-    nameSub:"體力 A · 爆發 · 直球",
-    cgDesc:"肌肉型男・爽朗笑容\n半臉 CG（右半構圖）",
-    line:"我要找的對手，最好也能變成最硬的隊友。",
+    nameSub:"體力 A · 直球 · 說到做到",
+    /* 三連圖：①背影站立握鈴 ②特寫護膝訓練裝備 ③背影深蹲扛鈴 → 全幅入場 CG */
+    cgPanels: [
+      "cg/trainer_guy/panel_01_back_stand.png",
+      "cg/trainer_guy/panel_02_closeup_knee.png",
+      "cg/trainer_guy/panel_03_back_squat.png"
+    ],
+    cgFinal: "cg/trainer_guy/cg_full_enter.png",
+    cgPanelHints: ["背影 · 站立 · 握鈴", "特寫 · 護膝 · 訓練裝備", "背影 · 深蹲 · 扛鈴"],
+    cgTriptychTopics: ["性格", "日常習慣", "戀愛觀"],
+    cgTriptychLines: [
+      "沒辦法擺爛，做就做好——不然我會自己覺得怪。<br>身邊說我太認真；我覺得這樣才正常。",
+      "護膝、腕帶、鞋帶——出門前我都自己確認。<br>裝備沒準備好，訓練再拼也是白費。",
+      "追人的方式不太浪漫，就是直接說喜歡你。<br>兜圈子、猜來猜去……我不太會。"
+    ],
+    cgDesc:"健身教練・削邊短棕髮・爽朗笑容\n粉色連帽衫・深蹲杠鈴・健身房入場 CG",
+    line:"我不會說什麼甜話，但我說到做到。<br><em>喜歡你，就是真的喜歡你。</em>",
     hold: 7000 },
 
   /* ⑧ 暖男 */
   { type:"char",
     tag:"男嘉賓 · 02",
-    name:"暖男",
+    name:"陽平",
+    fullName:"小野 陽平",
     nameFontClass:"nf-warm",
     nameSub:"廚藝 A · 親和 · 溫柔陷阱",
-    cgDesc:"端著紅茶・禮貌微笑\n半臉 CG（右半構圖）",
+    /* 三連圖：①備料切菜背影 ②撈起麵條背影 ③大火熱炒 → 全幅入場 CG */
+    cgPanels: [
+      "cg/warm_guy/panel_01_prep.png",
+      "cg/warm_guy/panel_02_noodle.png",
+      "cg/warm_guy/panel_03_stirfry.png"
+    ],
+    cgFinal: "cg/warm_guy/cg_full_enter.png",
+    cgPanelHints: ["背影 · 砧板 · 切菜備料", "背影俯視 · 大鍋 · 夾起麵條", "側面 · 大火 · 翻炒鍋氣"],
+    cgTriptychTopics: ["日常", "用心", "心意"],
+    cgTriptychLines: [
+      "備料比炒菜更重要——怎麼切、怎麼搭，決定一頓飯的樣子。<br>第一次為你做，食材買得比平常多。",
+      "麵條剛熟時撈起來——早硬晚爛，這時間我最在意。<br>對人也一樣，你說過的事我都有記。",
+      "大火騙不了人，喜不喜歡，嚐一口就知道。<br>喜歡一個人，就是想餵飽她——我先做給你吃。"
+    ],
+    cgDesc:"戴眼鏡暖男・廚房備料・白色長袖＋黑色圍裙\n正面微笑端菜入場 CG（右半構圖）",
     line:"先坐吧。今天不管發生什麼，<br>至少別餓著。",
     hold: 6800 },
 
   /* ⑨ 高冷男 */
   { type:"char",
     tag:"男嘉賓 · 03",
-    name:"高冷男",
+    name:"蓮",
+    fullName:"霧島 蓮",
     nameFontClass:"nf-cool",
-    nameSub:"魅力 A · 冷 · 層次感",
-    cgDesc:"雜誌遮半臉・只露眼睛\n半臉 CG（右半構圖）",
-    line:"好感可以買；層次不行。",
-    hold: 6200 },
+    nameSub:"酒店公關 · 看透了 · 來攪局",
+    cgPanels: [
+      "cg/cool_boy/panel_01.png",
+      "cg/cool_boy/panel_02.png",
+      "cg/cool_boy/panel_03.png"
+    ],
+    cgFinal: "cg/cool_boy/cg_full_enter.png",
+    cgPanelHints: [
+      "酒吧情侶背影 · 高冷男環肩 · 女靠肩",
+      "情侶手部特寫 · 男手覆女手 · 大理石圓桌雙杯",
+      "舉杯手部特寫 · 單手握水晶威士忌杯 · 局部下顎金髮"
+    ],
+    cgTriptychTopics: ["比你更早知道", "想不起來了", "等一個理由"],
+    cgTriptychLines: [
+      "做這行，她們進場那一步我就讀完了。<br>她靠過來前，我早就知道——只是讓她以為是她的決定。",
+      "什麼反應都見過，久了有點累。<br>這隻手壓下去之前，我停了一下——想不起上次是何時。",
+      "這杯是我自己倒的，不開單。<br>等一個值得喝完的理由——就讓它先放在那裡。"
+    ],
+    cgDesc:"金色凌亂短髮・白西裝・深藍花紋襯衫・銀鏈\n酒店酒吧夜景・舉杯邀請入場 CG",
+    line:"太久沒有人讓我意外了。<br>——所以我來了。",
+    hold: 6800 },
 
   /* ⑩ 轉場字卡（女第二波） */
   { type:"card",
-    main:"還有人，沒對到頻率",
-    hold: 2400 },
+    main:"真正的變數，現在才要進場。",
+    sub:"規則之外 · 預料之外",
+    hold: 2800 },
 
-  /* ⑪ 貴氣大小姐 */
+  /* ⑪ 貴氣大小姐（三連圖 → 全幅入場 CG） */
   { type:"char",
     tag:"女嘉賓 · 04",
-    name:"貴氣大小姐",
+    name:"雪音",
+    fullName:"桐院 雪音",
     nameFontClass:"nf-lady",
     nameSub:"從容 · 過來人 · 一旦喜歡就是溫柔大姐姐",
-    cgDesc:"淺藍銀色中長波浪髮・側分\n半臉 CG（左半構圖）",
-    line:"我來，是看誰還值得我親自彎一次腰。",
+    /* 三連圖：①去公司路上講電話 ②深夜工作室對人台做衣服 ③辦公桌獎杯相框成就 → 全幅 cg_full_enter */
+    cgPanels: [
+      "cg/lady_girl/panel_01.png",
+      "cg/lady_girl/panel_02.png",
+      "cg/lady_girl/panel_03.png"
+    ],
+    cgFinal: "cg/lady_girl/cg_full_enter.png",
+    cgPanelHints: [
+      "去公司路上 · 講電話 · 皮夾克",
+      "深夜工作室 · 人台 · 認真做衣服",
+      "辦公桌 · 相框 · 獎杯 · 成就"
+    ],
+    cgTriptychTopics: ["性格", "閱歷", "擇偶喜好"],
+    cgTriptychLines: [
+      "邊走邊把該處理的事處理完，不想讓誰久等。<br>從容對我來說是安心，不是裝給誰看。",
+      "做服裝設計，外人只看見成品。<br>工作和感情一樣——認真對待，不想將就。",
+      "獎盃、相框，都是這些年一步步走來的。<br>我來這裡，不是想向誰證明——只想有人問：妳累不累。"
+    ],
+    cgDesc:"銀藍波浪長髮・眼鏡・皮夾克\n高樓辦公室・落地窗外城市・托腮入場 CG",
+    line:"能讓我收起從容的人，我不會隨便給。<br>今日來——是想看看，會不會是你。",
     hold: 6800 },
 
   /* ⑫ 地雷少女 */
   { type:"char",
     tag:"女嘉賓 · 05",
-    name:"地雷少女",
+    name:"小璦",
+    fullName:"夢野 璦",
     nameFontClass:"nf-mine",
     nameSub:"頻率獨特 · 難以接入 · 執念式深愛",
-    cgDesc:"淺粉高馬尾・黑貓耳蝴蝶結・空靈眼神\n半臉 CG（左半構圖）",
+    cgPanels: [
+      "cg/mine_girl/panel_01.png",
+      "cg/mine_girl/panel_02.png",
+      "cg/mine_girl/panel_03.png"
+    ],
+    cgFinal: "cg/mine_girl/cg_full_enter.png",
+    cgPanelHints: ["夾娃娃機前 · 背影 · 凝視", "夾爪抓熊 · 背景 V 字手勢", "緊抱粉熊 · 不鬆手"],
+    cgTriptychTopics: ["性格", "日常", "戀愛觀"],
+    cgTriptychLines: [
+      "站在一個地方就能一直站下去……<br>眼睛看著的還在，我就不想走。",
+      "投了很多次，爪子每次都差一點點。<br>我不生氣，繼續——喜歡的東西我不放棄。",
+      "終於……抓到了。這樣就夠了。<br>喜歡上的話，我會一直抱著不鬆手。"
+    ],
+    cgDesc:"淺粉高馬尾・黑貓耳蝴蝶結・空靈眼神\n夾娃娃機街機廳・全身入場 CG",
     loadingTxt:"載入中……",
-    line:"欸？這題是加分題嗎？<br>那我要用貓咪語回答可以嗎——喵？",
+    line:"嗯……如果你是熊熊的話。<br>我會一直不鬆手——<em>你要小心哦。喵。</em>",
     hold: 7500 },
 
   /* ⑬ 轉場字卡（VIP） */
   { type:"card",
-    main:"最後一位，不適合剪進預告",
-    sub:"特邀來賓：規則以外的變數",
+    main:"最後一位，看起來再普通不過。",
+    sub:"卻是這場秀，最致命的轉折。",
     hold: 2800 },
 
   /* ⑭ 男主角 */
@@ -848,10 +1023,28 @@ const SEQUENCE = [
     tag:"VIP · 特邀",
     name:"男主角",             // ← 後面換本名
     nameFontClass:"nf-mc",
-    nameSub:"安靜 · 重心穩 · 說話少但說到點子上",
-    cgDesc:"黑色凌亂短髮・厚重瀏海幾乎遮眼\n半臉 CG（左半，背光剪影感）",
-    line:"嗯。<br><em>……然後呢。</em>",
-    hold: 7200 },
+    nameSub:"普通 · 一個人的一天 · 攝影師已崩潰",
+    cgPanels: [
+      "cg/protagonist/panel_01.png",
+      "cg/protagonist/panel_02.png",
+      "cg/protagonist/panel_03.png"
+    ],
+    cgFinal: "cg/protagonist/cg_full_enter.png",
+    cgPanelHints: [
+      "在家廚房・吃泡麵・等三分鐘放空",
+      "超市貨架・比較兩包零食・猶豫",
+      "傍晚便利商店門口・蹲下餵街貓"
+    ],
+    cgTriptychTopics: ["早上", "下午", "傍晚"],
+    cgTriptychLines: [
+      "早上吃了泡麵，等三分鐘時放空了。<br><em>（攝影師 OS：你是在放空什麼！！）</em>",
+      "在貨架前站了一陣，拿了右邊那包。<br><em>（攝影師 OS：你站了十二分鐘……）</em>",
+      "傍晚餵了門口的貓，牠吃完就走了。<br><em>（攝影師 OS：跟拍一天就拍到這個？）</em>"
+    ],
+    cgDesc:"黑色凌亂短髮・厚重瀏海幾乎遮眼\n客廳・比耶・緊張微笑・玩家輸入名字入場 CG",
+    line:"",
+    lineOs:"<em>（攝影師 OS：是我們選錯人了嗎……不對吧……）</em>",
+    hold: 7800 },
 
   /* ⑮ LOGO 收尾 */
   { type:"card", variant:"logo no-line",
@@ -992,15 +1185,17 @@ function buildFrame(item) {
 
     const nbMain = document.createElement("div");
     nbMain.className = "name-bottom-main";
-    nbMain.textContent = item.name;
-
-    const nbSub = document.createElement("div");
-    nbSub.className = "name-bottom-sub";
-    nbSub.textContent = item.nameSub || "";
+    nbMain.textContent = item.fullName || item.name;
 
     nameBottom.appendChild(nbLabel);
     nameBottom.appendChild(nbMain);
-    if (item.nameSub) nameBottom.appendChild(nbSub);
+
+    if (item.nameSub) {
+      const nbSub = document.createElement("div");
+      nbSub.className = "name-bottom-sub";
+      nbSub.textContent = item.nameSub;
+      nameBottom.appendChild(nbSub);
+    }
 
     nameLayer.appendChild(nameLeft);
     nameLayer.appendChild(nameBottom);
@@ -1051,6 +1246,59 @@ function buildFrame(item) {
 }
 
 // ═══════════════════════════════════════════════════
+// 播放加速（按住空白鍵）
+// ═══════════════════════════════════════════════════
+let playbackSpeed = 1;
+const SPEED_BOOST = 8;
+const activePlayDelays = new Set();
+
+function playDelay(logicalMs, fn) {
+  const entry = {
+    fn,
+    logicalRemaining: logicalMs,
+    timerId: null,
+    startedAt: 0,
+    speedAtArm: playbackSpeed,
+    cancelled: false
+  };
+
+  function arm() {
+    if (entry.cancelled) return;
+    clearTimeout(entry.timerId);
+    entry.startedAt = Date.now();
+    entry.speedAtArm = playbackSpeed;
+    entry.timerId = setTimeout(() => {
+      activePlayDelays.delete(entry);
+      if (!entry.cancelled) entry.fn();
+    }, Math.max(1, entry.logicalRemaining / playbackSpeed));
+  }
+
+  entry.refreshOnSpeedChange = function () {
+    if (entry.cancelled) return;
+    const elapsed = Date.now() - entry.startedAt;
+    entry.logicalRemaining = Math.max(0, entry.logicalRemaining - elapsed * entry.speedAtArm);
+    if (entry.logicalRemaining <= 0) {
+      clearTimeout(entry.timerId);
+      activePlayDelays.delete(entry);
+      entry.fn();
+    } else {
+      arm();
+    }
+  };
+
+  activePlayDelays.add(entry);
+  arm();
+  return entry;
+}
+
+function setPlaybackSpeed(speed) {
+  if (playbackSpeed === speed) return;
+  playbackSpeed = speed;
+  document.body.classList.toggle("fast-forward", speed > 1);
+  for (const entry of activePlayDelays) entry.refreshOnSpeedChange();
+}
+
+// ═══════════════════════════════════════════════════
 // 打字機效果
 // ═══════════════════════════════════════════════════
 
@@ -1072,11 +1320,15 @@ function parseSegments(html) {
 }
 
 // 逐字打出；支援 <br> 與 <em>；genHolder 變更時中止前一段打字；onComplete 可選
-function typewrite(el, speedMs = 60, genHolder, onComplete) {
+function typewrite(el, speedMs = 60, genHolder, onComplete, appendMode = false) {
   const holder = genHolder || { g: 0 };
   const onDone = typeof onComplete === "function" ? onComplete : null;
   const gen = ++holder.g;
-  el.innerHTML = "";
+  if (!appendMode) {
+    el.innerHTML = "";
+  } else {
+    el.appendChild(document.createElement("br"));
+  }
   const segs = parseSegments(el.dataset.raw || "");
 
   // 展平成字符佇列
@@ -1122,7 +1374,7 @@ function typewrite(el, speedMs = 60, genHolder, onComplete) {
 
     // 標點符號停頓久一點
     const pause = /[。，？！——…]/.test(ch) ? speedMs * 5 : speedMs;
-    setTimeout(tick, pause);
+    playDelay(pause, tick);
   }
 
   tick();
@@ -1138,6 +1390,83 @@ function estimateTypingMs(rawHtml, speed = 65) {
   return ms;
 }
 
+function segmentsToHtml(segs) {
+  return segs.map(seg => {
+    if (seg.type === "br") return "<br>";
+    if (seg.type === "em") return `<em>${seg.content}</em>`;
+    return seg.content;
+  }).join("");
+}
+
+/** 依 <br> 拆行，每頁最多 maxLines 行 */
+function splitDialoguePages(html, maxLines = MAX_DIALOGUE_LINES) {
+  const lineSegs = [];
+  let current = [];
+
+  for (const seg of parseSegments(html || "")) {
+    if (seg.type === "br") {
+      lineSegs.push(current);
+      current = [];
+    } else {
+      current.push(seg);
+    }
+  }
+  lineSegs.push(current);
+
+  const lines = lineSegs
+    .map(segs => segmentsToHtml(segs))
+    .filter((line, i, arr) => line || i < arr.length - 1);
+
+  if (!lines.length) return [""];
+
+  const pages = [];
+  for (let i = 0; i < lines.length; i += maxLines) {
+    pages.push(lines.slice(i, i + maxLines).join("<br>"));
+  }
+  return pages;
+}
+
+function estimatePagedTypingMs(rawHtml, speed = 65) {
+  const pages = splitDialoguePages(rawHtml, MAX_DIALOGUE_LINES);
+  let ms = 0;
+  for (let i = 0; i < pages.length; i++) {
+    ms += estimateTypingMs(pages[i], speed);
+    if (i < pages.length - 1) ms += DIALOGUE_PAGE_PAUSE_MS;
+  }
+  return ms;
+}
+
+/** 逐頁打字，每頁最多 MAX_DIALOGUE_LINES 行 */
+function typewritePaged(el, speedMs, genHolder, onComplete) {
+  const holder = genHolder || { g: 0 };
+  const pages = splitDialoguePages(el.dataset.raw || "", MAX_DIALOGUE_LINES);
+  const sessionGen = ++holder.g;
+  let pageIdx = 0;
+
+  function runPage() {
+    if (holder.g !== sessionGen) return;
+    if (pageIdx >= pages.length) {
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+    el.dataset.raw = pages[pageIdx++];
+    const pageHolder = { g: 0 };
+    typewrite(el, speedMs, pageHolder, () => {
+      if (holder.g !== sessionGen) return;
+      if (pageIdx < pages.length) {
+        playDelay(DIALOGUE_PAGE_PAUSE_MS, () => {
+          el.innerHTML = "";
+          runPage();
+        });
+      } else if (typeof onComplete === "function") {
+        onComplete();
+      }
+    });
+  }
+
+  runPage();
+}
+
 const CG_REVEAL_MS = 980;  // 配合 CSS clip-path transition 0.95s
 const TRIPTYCH_STAGGER_MS = 620;  // 無分段台詞時，三格圖的間隔
 /** 有 cgTriptychLines 時：上一段台詞打完後，停留多久再出下一格圖 + 打下一段 */
@@ -1148,6 +1477,10 @@ const TRIPTYCH_AFTER_LAST_PANEL_MS = 1650;
 const TRIPTYCH_LAST_LINE_FADEOUT_MS = 620;
 const TRIPTYCH_TO_FULL_MS = 880;
 const TRIPTYCH_LINE_PADDING_MS = 220;
+/** 單次畫面最多顯示幾個 <br> 行（1 = 每次一行，視覺上最多約兩行；超出時分頁接續） */
+const MAX_DIALOGUE_LINES = 1;
+/** 同一段對白分頁之間的停頓 */
+const DIALOGUE_PAGE_PAUSE_MS = 900;
 /** 最後全幅 CG：名字卡停留時間，之後淡出再接對白 */
 const FINAL_CG_NAME_HOLD_MS = 2600;
 /** 需 ≥ .name-layer transition（0.8s）*/
@@ -1155,32 +1488,63 @@ const NAME_LAYER_FADEOUT_MS = 850;
 /** 完整 CG 收尾台詞打完後，畫面上再停多久才切下一幀（含原 600ms 停留） */
 const FINAL_DIALOGUE_PAUSE_MS = 1100;
 const LINE_LAYER_HIDE_MS = 650;
+const VIP_FINAL_LINE_GAP_MS = 450;
+
+function isVipCharItem(item) {
+  return item && item.type === "char" && item.tag && item.tag.startsWith("VIP");
+}
+
+function estimateFinalDialogueMs(item, el) {
+  if (isVipCharItem(item)) {
+    const playerLine = (el && el._vipPlayerLine) || "嗯。";
+    const os = item.lineOs || "";
+    return estimatePagedTypingMs(playerLine, 65)
+      + VIP_FINAL_LINE_GAP_MS
+      + estimatePagedTypingMs(os, 65);
+  }
+  return estimatePagedTypingMs(item.line || "", 65);
+}
 
 function finalCgPreDialogueMs() {
   return FINAL_CG_NAME_HOLD_MS + NAME_LAYER_FADEOUT_MS;
 }
 
-function startFinalDialogueOnly(el) {
+function startFinalDialogueOnly(el, item) {
   if (!el._lineLayer || !el._lineText) return;
   el._lineLayer.classList.add("show");
-  typewrite(el._lineText, 65, el._twGen);
-  const typingMs = estimateTypingMs(el._lineText.dataset.raw || "", 65);
-  setTimeout(() => {
-    el._lineLayer.classList.remove("show");
-  }, typingMs + 600 + FINAL_DIALOGUE_PAUSE_MS);
+
+  function finishFinalDialogue() {
+    playDelay(600 + FINAL_DIALOGUE_PAUSE_MS, () => {
+      el._lineLayer.classList.remove("show");
+    });
+  }
+
+  if (item && isVipCharItem(item) && item.lineOs) {
+    const playerLine = el._vipPlayerLine || "嗯。";
+    el._lineText.dataset.raw = playerLine;
+    typewritePaged(el._lineText, 65, el._twGen, () => {
+      playDelay(VIP_FINAL_LINE_GAP_MS, () => {
+        el._lineText.dataset.raw = item.lineOs;
+        typewritePaged(el._lineText, 65, el._twGen, finishFinalDialogue);
+      });
+    });
+    return;
+  }
+
+  typewritePaged(el._lineText, 65, el._twGen, finishFinalDialogue);
 }
 
 /** 完整 CG 就緒後：名字卡 → 消失 → 收尾台詞（不再次加名字） */
-function scheduleNameCardThenFinalDialogue(el) {
+function scheduleNameCardThenFinalDialogue(el, item) {
   if (!el._nameLayer) {
-    startFinalDialogueOnly(el);
+    startFinalDialogueOnly(el, item);
     return;
   }
   el._nameLayer.classList.add("show");
-  setTimeout(() => {
+  playDelay(FINAL_CG_NAME_HOLD_MS, () => {
     el._nameLayer.classList.remove("show");
-    setTimeout(() => startFinalDialogueOnly(el), NAME_LAYER_FADEOUT_MS);
-  }, FINAL_CG_NAME_HOLD_MS);
+    playDelay(NAME_LAYER_FADEOUT_MS, () => startFinalDialogueOnly(el, item));
+  });
 }
 
 function charHasTriptych(item) {
@@ -1197,7 +1561,7 @@ function getTriptychCrossfadeAtChained(item) {
   const lines = item.cgTriptychLines;
   let t = t0;
   for (let i = 0; i < 3; i++) {
-    t += estimateTypingMs(lines[i] || "", 65);
+    t += estimatePagedTypingMs(lines[i] || "", 65);
     if (i < 2) t += TRIPTYCH_BETWEEN_SEGMENTS_MS;
   }
   return t + TRIPTYCH_AFTER_LAST_PANEL_MS;
@@ -1214,36 +1578,36 @@ function getTriptychCrossfadeAt(item) {
 }
 
 /** 確保整段結束前不會被 hold 截斷（有三連圖者） */
-function computeTriptychHoldExtra(item) {
+function computeTriptychHoldExtra(item, el) {
   if (!charHasTriptych(item)) return 0;
   const crossfadeAt = getTriptychCrossfadeAt(item);
   const lastLineFade = charUsesTriptychDialogue(item) ? TRIPTYCH_LAST_LINE_FADEOUT_MS : 0;
   const fullCgSettleDone = crossfadeAt + lastLineFade + TRIPTYCH_TO_FULL_MS + TRIPTYCH_LINE_PADDING_MS;
   const finalLineStart = fullCgSettleDone + finalCgPreDialogueMs();
-  const finalTyping = estimateTypingMs(item.line || "", 65);
+  const finalTyping = estimateFinalDialogueMs(item, el);
   const totalMs = finalLineStart + finalTyping + 600 + FINAL_DIALOGUE_PAUSE_MS + LINE_LAYER_HIDE_MS;
   return Math.max(0, totalMs - item.hold);
 }
 
 /** 角色幀：無三連圖時，依「CG 展開 → 名字 → 收尾對白 → 停頓」推算最少停留 */
-function computeSingleCgHoldExtra(item) {
+function computeSingleCgHoldExtra(item, el) {
   if (item.type !== "char") return 0;
   if (charHasTriptych(item)) return 0;
   const startFinalTyping = CG_REVEAL_MS + finalCgPreDialogueMs();
-  const finalTyping = estimateTypingMs(item.line || "", 65);
+  const finalTyping = estimateFinalDialogueMs(item, el);
   const totalMs = startFinalTyping + finalTyping + 600 + FINAL_DIALOGUE_PAUSE_MS + LINE_LAYER_HIDE_MS;
   return Math.max(0, totalMs - item.hold);
 }
 
-function computeCharHoldExtra(item) {
+function computeCharHoldExtra(item, el) {
   if (item.type !== "char") return 0;
-  return computeTriptychHoldExtra(item) + computeSingleCgHoldExtra(item);
+  return computeTriptychHoldExtra(item, el) + computeSingleCgHoldExtra(item, el);
 }
 
 /** 三連圖 → 完整 CG → 名字卡 → 收尾台詞（line） */
 function runCharCgThenLine(el, item) {
   if (!el._hasTriptych || !el._cgStageTrip || !el._cgStageFull || !el._cgPanels) {
-    setTimeout(() => scheduleNameCardThenFinalDialogue(el), CG_REVEAL_MS);
+    playDelay(CG_REVEAL_MS, () => scheduleNameCardThenFinalDialogue(el, item));
     return;
   }
   const panels = el._cgPanels;
@@ -1269,45 +1633,47 @@ function runCharCgThenLine(el, item) {
       panels[i].classList.add("is-visible");
       if (lineTopicEl) lineTopicEl.textContent = topics[i] || "";
       el._lineText.dataset.raw = item.cgTriptychLines[i];
-      typewrite(el._lineText, speed, twGen, () => {
+      typewritePaged(el._lineText, speed, twGen, () => {
         if (i < 2) {
-          setTimeout(() => goStep(i + 1), PAD);
+          playDelay(PAD, () => goStep(i + 1));
         } else {
-          setTimeout(() => {
+          playDelay(TRIPTYCH_AFTER_LAST_PANEL_MS, () => {
             el._lineLayer.classList.remove("show");
-            setTimeout(() => {
+            playDelay(TRIPTYCH_LAST_LINE_FADEOUT_MS, () => {
               el._cgStageTrip.classList.add("is-hidden");
               el._cgStageFull.classList.add("is-visible");
-              setTimeout(() => {
+              playDelay(TRIPTYCH_TO_FULL_MS + TRIPTYCH_LINE_PADDING_MS, () => {
                 el._lineLayer.classList.remove("triptych-active");
                 if (lineTopicEl) lineTopicEl.textContent = "";
-                el._lineText.dataset.raw = item.line;
-                scheduleNameCardThenFinalDialogue(el);
-              }, TRIPTYCH_TO_FULL_MS + TRIPTYCH_LINE_PADDING_MS);
-            }, TRIPTYCH_LAST_LINE_FADEOUT_MS);
-          }, TRIPTYCH_AFTER_LAST_PANEL_MS);
+                if (!isVipCharItem(item)) {
+                  el._lineText.dataset.raw = item.line;
+                }
+                scheduleNameCardThenFinalDialogue(el, item);
+              });
+            });
+          });
         }
       });
     }
 
-    setTimeout(() => goStep(0), t0);
+    playDelay(t0, () => goStep(0));
     return;
   }
 
   panels.forEach((panel, i) => {
-    setTimeout(() => panel.classList.add("is-visible"), t0 + TRIPTYCH_STAGGER_MS * i);
+    playDelay(t0 + TRIPTYCH_STAGGER_MS * i, () => panel.classList.add("is-visible"));
   });
 
   const crossfadeAt = getTriptychCrossfadeAt(item);
 
-  setTimeout(() => {
+  playDelay(crossfadeAt, () => {
     el._cgStageTrip.classList.add("is-hidden");
     el._cgStageFull.classList.add("is-visible");
-  }, crossfadeAt);
+  });
 
-  setTimeout(() => {
-    scheduleNameCardThenFinalDialogue(el);
-  }, crossfadeAt + TRIPTYCH_TO_FULL_MS + TRIPTYCH_LINE_PADDING_MS);
+  playDelay(crossfadeAt + TRIPTYCH_TO_FULL_MS + TRIPTYCH_LINE_PADDING_MS, () => {
+    scheduleNameCardThenFinalDialogue(el, item);
+  });
 }
 
 // ═══════════════════════════════════════════════════
@@ -1321,6 +1687,7 @@ const total    = SEQUENCE.length;
 // VIP 面板元素
 const vipPanel   = document.getElementById("vip-panel");
 const vipName    = document.getElementById("vip-name");
+const vipFullName = document.getElementById("vip-fullname");
 const vipLine    = document.getElementById("vip-line");
 const vipConfirm = document.getElementById("vip-confirm");
 
@@ -1344,19 +1711,22 @@ function openVipPanel(afterIdx) {
 
 // ── 關閉面板並繼續播放 ──
 function closeVipPanel() {
-  const name    = vipName.value.trim() || "你";
-  const lineRaw = vipLine.value.trim() || "嗯。";
+  const name     = vipName.value.trim() || "你";
+  const fullName = vipFullName.value.trim() || name;
+  const lineRaw  = vipLine.value.trim() || "嗯。";
 
   // 更新 VIP 幀的顯示名稱與台詞
   const vipFrame = frames[VIP_IDX];
   if (vipFrame) {
-    // 左側縱排大字
+    vipFrame._vipPlayerLine = lineRaw;
+
+    // 左側縱排大字 (小名)
     const nameBig = vipFrame.querySelector(".name-big");
     if (nameBig) nameBig.textContent = name;
 
-    // 底部橫排主名
+    // 底部橫排主名 (本名)
     const nbMain = vipFrame.querySelector(".name-bottom-main");
-    if (nbMain) nbMain.textContent = name;
+    if (nbMain) nbMain.textContent = fullName;
 
     // 台詞層：speaker hint + lineText
     const speaker = vipFrame.querySelector(".line-speaker");
@@ -1379,8 +1749,31 @@ vipConfirm.addEventListener("click", closeVipPanel);
 
 // Enter 快捷（姓名欄）
 vipName.addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); vipFullName.focus(); }
+});
+vipFullName.addEventListener("keydown", e => {
   if (e.key === "Enter") { e.preventDefault(); vipLine.focus(); }
 });
+
+function isSpaceBlocked() {
+  return vipPanel.classList.contains("open")
+    || document.activeElement === vipName
+    || document.activeElement === vipFullName
+    || document.activeElement === vipLine;
+}
+
+document.addEventListener("keydown", e => {
+  if (e.code !== "Space" || e.repeat || isSpaceBlocked()) return;
+  e.preventDefault();
+  setPlaybackSpeed(SPEED_BOOST);
+});
+
+document.addEventListener("keyup", e => {
+  if (e.code !== "Space") return;
+  setPlaybackSpeed(1);
+});
+
+window.addEventListener("blur", () => setPlaybackSpeed(1));
 
 // ── 主播放函式 ──
 function showFrame(idx) {
@@ -1400,23 +1793,23 @@ function showFrame(idx) {
     }
   });
 
-  const holdExtra = computeCharHoldExtra(item);
+  const holdExtra = computeCharHoldExtra(item, el);
 
   // VIP 轉場字卡播完後，攔截並開啟面板
   const nextIdx = idx + 1;
   const isVipGate = (nextIdx === VIP_IDX);
 
-  setTimeout(() => {
+  playDelay(item.hold + holdExtra, () => {
     el.classList.add("fade-out");
     el.classList.remove("visible");
-    setTimeout(() => {
+    playDelay(680, () => {
       if (isVipGate) {
         openVipPanel(nextIdx);   // 暫停等玩家輸入
       } else {
         showFrame(nextIdx);
       }
-    }, 680);
-  }, item.hold + holdExtra);
+    });
+  });
 }
 
 showFrame(0);
